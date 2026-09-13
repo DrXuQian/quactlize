@@ -80,3 +80,11 @@ Local host regressions: **164 passed**. All six corrected PPU modules compile
 in 28.9 seconds; 192 native input/recipe specializations pass symbol and
 fast-dequant/FP32 ISA checks. The PPU gate must still be rerun; it does not
 inherit NVIDIA correctness or performance admission.
+
+## Subsequent PPU result
+
+The fresh v2 gate completed on PPU: [108/108 cases, 1,728 recipe checks,
+six imported ACU reports](docs/Q4_MOE_S1_RESULTS_20260913.md). Maximum
+condition-normalized error is 5.1948897e-4 (META) and 2.2284600e-7
+(affine), both below 0.005. The helper bug is closed for this indexed gate;
+production selection, other formats and full-chain performance remain separate.

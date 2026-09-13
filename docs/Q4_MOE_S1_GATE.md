@@ -8,6 +8,11 @@ Current package: **q4-moe-s1-v2**. The v1 port incorrectly shared a signed
 decoder with unsigned affine readers; [root cause and exact regression](../Q4_MOE_S1_NUMERIC_FIX.md).
 Use a fresh run for v2. Failed v1 timing is not performance evidence.
 
+PPU result: [108/108 cases and 1,728 recipe checks pass](Q4_MOE_S1_RESULTS_20260913.md).
+All six ACU reports were reviewed. Eighteen cases have greater than 5%
+round spread and need matched reconfirmation during the combined SIMT/TC
+sweep. This is operator admission, not a production selector change.
+
 ## What the kernel does
 
 One launch reads GPU expert IDs, chooses an activation row, reads that
