@@ -163,7 +163,13 @@ class Bench:
         checked(self.query(C.byref(self.base),C.byref(f),C.byref(self.arr),C.byref(sizes)),'S1 query')
         if sizes.workspace_bytes: raise ValueError('S1 unexpectedly needs workspace')
         got=self.checked_output(key); err=error(got,self.data)
-        if err>=.005: raise ValueError(f'independent GGUF error {err:.6g}')
+        if err>=.005:
+            normalized=np.abs(got.astype('f8')-self.data['golden'])/np.maximum(self.data['denom'],1e-30)
+            row,col=np.unravel_index(int(np.argmax(normalized)),normalized.shape)
+            raise ValueError(f'independent GGUF error {err:.6g}; recipe={key} N={self.n} K={self.k} '
+                f'tokens={self.data["tokens"]} channels={self.data["channels"]} '
+                f'worst=[row:{row},expert:{int(self.data["expert"][row])},n:{col},'
+                f'got:{got[row,col]:.9g},want:{self.data["golden"][row,col]:.9g}]')
         r=self.case_r; c=Call.from_buffer_copy(self.base)
         # Numerically DIFFERENT float inputs that round to the same F16 data
         # must exactly match the F16 input specialization.

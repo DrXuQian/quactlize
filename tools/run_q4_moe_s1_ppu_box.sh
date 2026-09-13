@@ -40,13 +40,13 @@
     [[ ${FETCH_PAYLOADS:-1} == 0 || ${FETCH_PAYLOADS:-1} == 1 ]]
     if [[ ${FETCH_PAYLOADS:-1} == 1 ]]; then
         stage=fetch-payloads
-        git lfs pull --include="prebuilt/ppu0010/q4-moe-s1-v1/*.so,prebuilt/ppu0010/q4-smallm-v1/libq4_smallm_n512_k2048.so" --exclude=""
+        git lfs pull --include="prebuilt/ppu0010/q4-moe-s1-v2/*.so,prebuilt/ppu0010/q4-smallm-v1/libq4_smallm_n512_k2048.so" --exclude=""
     fi
     stage=verify
     "$PYTHON" - <<'PY'
 from pathlib import Path
 from dev.gemv_ppu.moe_s1 import verify
-verify(Path('prebuilt/ppu0010/q4-moe-s1-v1'))
+verify(Path('prebuilt/ppu0010/q4-moe-s1-v2'))
 print('Q4_MOE_S1_PACKAGE VERIFIED shapes=6 cases=108 recipes=16 inputs=F16+F32 compile=NONE JIT=NONE')
 PY
     if [[ -n ${RESUME_RUN:-} ]]; then

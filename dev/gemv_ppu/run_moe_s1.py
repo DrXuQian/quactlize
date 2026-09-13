@@ -102,6 +102,7 @@ def child(args,manifest):
                 continue
             started=time.monotonic(); screen=[]
             for c in spec.inventory():
+                print(f'Q4_MOE_S1_CHECK case={key} recipe={c.key}',flush=True)
                 proof=bench.correctness(c.key)
                 samples=bench.measure(c.key,5)
                 screen.append(dict(key=c.key,correctness=proof,samples_us=samples,median_us=statistics.median(samples)))
@@ -201,7 +202,7 @@ def main(args):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--sdk',type=Path,required=True)
-    p.add_argument('--bundle',type=Path,default=ROOT/'prebuilt/ppu0010/q4-moe-s1-v1')
+    p.add_argument('--bundle',type=Path,default=ROOT/'prebuilt/ppu0010/q4-moe-s1-v2')
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--l2-bytes',type=int,default=0)
     p.add_argument('--acu',type=Path)

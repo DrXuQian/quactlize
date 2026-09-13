@@ -4,15 +4,16 @@
 namespace quactlize::execution::q4_s1 {
 struct ScaleZero { __half scale,zero; };
 
-template<int Slot>
+template<int Slot,int Bias>
 __device__ __forceinline__ __half2 codes(uint32_t words) {
-    static_assert(Slot >= 0 && Slot < 4);
-    // The two b16 halves own adjacent N columns, not adjacent K values.
-    uint32_t const bits = ((words >> (4 * Slot)) & 0x000f000fu) | 0x64006400u;
-    __half2_raw raw;
-    raw.x = uint16_t(bits);
-    raw.y = uint16_t(bits >> 16);
-    return __hsub2(__half2(raw), __float2half2_rn(1032.f));
+    static_assert(Bias==0 || Bias==8);
+    constexpr int Pos=(Slot&1)*4;
+    uint32_t source=Slot>=2 ? words>>8 : words, bits;
+    asm("lop3.b32 %0, %1, %2, %3, 0xea;" : "=r"(bits)
+        : "r"(source), "n"(0x000f000fu<<Pos), "n"(0x64006400u));
+    __half2_raw raw; raw.x=uint16_t(bits);raw.y=uint16_t(bits>>16);
+    return __hfma2(__half2(raw), __float2half2_rn(1.f/(1<<Pos)),
+                   __float2half2_rn(-float(1024>>Pos)-float(Bias)));
 }
 
 __device__ __forceinline__ uint4 aligned_unit(uint8_t const* p) {

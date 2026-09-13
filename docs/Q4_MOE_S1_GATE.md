@@ -4,6 +4,10 @@ This ports the tuned dense Q4 SIMT readers to the existing indexed/compact
 call contract. It does **not** change the offline format, production
 heuristic, llama.cpp selection or the existing fused MoE chain.
 
+Current package: **q4-moe-s1-v2**. The v1 port incorrectly shared a signed
+decoder with unsigned affine readers; [root cause and exact regression](../Q4_MOE_S1_NUMERIC_FIX.md).
+Use a fresh run for v2. Failed v1 timing is not performance evidence.
+
 ## What the kernel does
 
 One launch reads GPU expert IDs, chooses an activation row, reads that

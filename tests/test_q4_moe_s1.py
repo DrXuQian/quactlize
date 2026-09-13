@@ -54,6 +54,59 @@ def test_port_is_mechanical_and_shipping_header_has_no_dev_dependency():
     assert 'c.workspace' not in body
 
 
+@pytest.mark.parametrize('family,shape,bias',[
+    ('meta',(512,2048),8),('medium',(1024,5120),0),('reuse',(4096,2048),0)])
+def test_port_retains_expanded_dense_helper_not_base_header(family,shape,bias):
+    from dev.gemv_ppu.smallm import kernel_parts
+    signature='template<int Slot>\n__device__ __forceinline__ __half2 codes'
+    expected=port.function(kernel_parts(*shape)[0],signature)
+    actual=port.function(port.helpers(),'template<int Slot,int Bias>')
+    actual=actual.replace('template<int Slot,int Bias>','template<int Slot>')
+    actual=actual.replace('    static_assert(Bias==0 || Bias==8);\n','')
+    actual=actual.replace('-float(Bias)',f'-{bias}.f')
+    assert actual==expected
+    row=port.row(family)
+    for slot in range(4): assert f'codes<{slot},{bias}>' in row
+    # Wrong shared signed default was the actual be2bc98 defect. It must not
+    # pass merely because the new generator and copied header agree.
+    if family!='meta':
+        assert expected.replace('-0.f','-8.f')!=actual
+
+
+@pytest.mark.parametrize('slot',range(4))
+@pytest.mark.parametrize('bias',(0,8))
+def test_fast_code_math_all_b16_words(slot,bias):
+    # Independent nibble oracle, not generated from the kernel's helper.
+    words=np.arange(65536,dtype=np.uint32)
+    pos=(slot&1)*4
+    source=words>>8 if slot>=2 else words
+    bits=((source&(0xf<<pos))|0x6400).astype('<u2')
+    values=(bits.view('<f2').astype('f4')/(1<<pos)-float(1024>>pos)-bias).astype('<f2')
+    expected=((words>>(slot*4))&15).astype('i2')-bias
+    np.testing.assert_array_equal(values,expected)
+
+
+def test_legacy_affine_error_matches_reported_0609534():
+    from gguf import GGMLQuantizationType
+    from gguf.quants import dequantize
+    from reference import gguf_kpack as ref
+    n,k=1024,3072
+    category=np.random.default_rng(81811+k).integers(0,4,k,dtype='u1')
+    a=np.random.default_rng(919).normal(0,.2,(1,4)).astype('f4').astype('f2')[0,category].astype('f8')
+    asum=a.reshape(k//256,8,32).sum(2)
+    errors=[]
+    for e in np.arange(8)*17+3:
+        rng=np.random.default_rng(np.random.SeedSequence([81923,12,n,k,int(e)]))
+        raw=rng.integers(0,256,(n*(k//256),144),dtype='u1')
+        for off in (0,2): raw[:,off:off+2]=rng.uniform(.005,.03,len(raw)).astype('<f2').view('u1').reshape(-1,2)
+        official=dequantize(raw.reshape(-1),GGMLQuantizationType.Q4_K).reshape(n,k).astype('f8')
+        d=raw[:,:2].copy().view('<f2').reshape(n,k//256).astype('f8')
+        sc=np.stack([ref._metadata_codes(raw.T,0,ref.SPECS[12],g)[0].reshape(n,k//256) for g in range(8)],axis=-1)
+        missing=-8*(d[:,:,None]*sc*asum[None,:,:]).sum((1,2))
+        errors.append(float(np.max(np.abs(missing)/(np.abs(official)@np.abs(a)))))
+    assert abs(max(errors)-0.609533505841744)<1e-12
+
+
 def test_shape_and_recipe_denominator():
     assert len(spec.SHAPES)==6 and spec.TOKENS==tuple(range(1,9))
     assert len(spec.inventory())==len({r.key for r in spec.inventory()})==16

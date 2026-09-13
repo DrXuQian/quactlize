@@ -40,10 +40,10 @@ __device__ __forceinline__ void row_meta(int tile,Activation<Input> a_ptr,uint8_
             #pragma unroll
             for(int slot=0;slot<4;++slot) {
                 __half2 q;
-                if(slot==0) q=codes<0>(words[p]);
-                else if(slot==1) q=codes<1>(words[p]);
-                else if(slot==2) q=codes<2>(words[p]);
-                else q=codes<3>(words[p]);
+                if(slot==0) q=codes<0,8>(words[p]);
+                else if(slot==1) q=codes<1,8>(words[p]);
+                else if(slot==2) q=codes<2,8>(words[p]);
+                else q=codes<3,8>(words[p]);
                 float2 w=__half22float2(__hfma2(q,scale,zero));
                 sums[p].x=fmaf(act[slot],w.x,sums[p].x);
                 sums[p].y=fmaf(act[slot],w.y,sums[p].y);
@@ -170,10 +170,10 @@ __device__ __forceinline__ void row_medium(int tile,Activation<Input> a_ptr,uint
                     #pragma unroll
                     for(int p=0;p<Pairs;++p) {
                         __half2 q;
-                        if(slot==0) q=codes<0>(words[r][p]);
-                        else if(slot==1) q=codes<1>(words[r][p]);
-                        else if(slot==2) q=codes<2>(words[r][p]);
-                        else q=codes<3>(words[r][p]);
+                        if(slot==0) q=codes<0,0>(words[r][p]);
+                        else if(slot==1) q=codes<1,0>(words[r][p]);
+                        else if(slot==2) q=codes<2,0>(words[r][p]);
+                        else q=codes<3,0>(words[r][p]);
                         float2 v=__half22float2(q);
                         dot[p].x=fmaf(ax[r],v.x,dot[p].x);
                         dot[p].y=fmaf(ax[r],v.y,dot[p].y);
@@ -273,10 +273,10 @@ __device__ __forceinline__ void row_reuse(int tile,Activation<Input> a_ptr,uint8
                     #pragma unroll
                     for(int p=0;p<Pairs;++p) {
                         __half2 q;
-                        if(slot==0) q=codes<0>(words[r][p]);
-                        else if(slot==1) q=codes<1>(words[r][p]);
-                        else if(slot==2) q=codes<2>(words[r][p]);
-                        else q=codes<3>(words[r][p]);
+                        if(slot==0) q=codes<0,0>(words[r][p]);
+                        else if(slot==1) q=codes<1,0>(words[r][p]);
+                        else if(slot==2) q=codes<2,0>(words[r][p]);
+                        else q=codes<3,0>(words[r][p]);
                         float2 v=__half22float2(q);
                         dot[p].x=fmaf(ax[r],v.x,dot[p].x);
                         dot[p].y=fmaf(ax[r],v.y,dot[p].y);

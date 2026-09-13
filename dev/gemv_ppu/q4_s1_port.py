@@ -20,7 +20,17 @@ def function(text, signature):
 
 
 def helpers():
-    native = (ROOT/'dev/gemv_cuda/q4_native.cuh').read_text()
+    # Resolve the helper AFTER all dense generator rewrites. The base .cuh
+    # is signed; affine dense readers deliberately use unsigned codes. Merely
+    # copying the outer kernel body does not preserve that numerical contract.
+    signature = 'template<int Slot>\n__device__ __forceinline__ __half2 codes'
+    signed = function(kernel_parts(512,2048)[0], signature)
+    unsigned = function(kernel_parts(1024,5120)[0], signature)
+    if unsigned != signed.replace('-8.f', '-0.f') or function(kernel_parts(4096,2048)[0], signature) != unsigned:
+        raise ValueError('frozen dense code-helper conventions differ')
+    code = replace_once(signed, 'template<int Slot>', 'template<int Slot,int Bias>')
+    code = replace_once(code, '-8.f', '-float(Bias)')
+    code = replace_once(code, '    constexpr int Pos=', '    static_assert(Bias==0 || Bias==8);\n    constexpr int Pos=')
     aligned = (ROOT/'dev/gemv_cuda/q4_aligned.cuh').read_text()
     affine = (ROOT/'dev/gemv_cuda/q4_group_affine.cuh').read_text()
     reuse = (ROOT/'dev/gemv_ppu/reader_reuse.hpp').read_text()
@@ -37,7 +47,7 @@ def helpers():
     reuse = replace_once(reuse, '*reinterpret_cast<uint4 const*>(ptr)', 'a.load8(offset)')
     reuse = replace_once(reuse, '*reinterpret_cast<uint2 const*>(ptr)', 'a.load4(offset)')
     pieces = ['struct ScaleZero { __half scale,zero; };\n',
-              function(native, 'template<int Slot>'),
+              code,
               function(aligned, '__device__ __forceinline__ uint4 aligned_unit'),
               function(affine, '__device__ __forceinline__ float2 q4_affine_header'),
               reuse, latency, reduce, fold]
@@ -59,6 +69,8 @@ def row(family):
         s = s[:start]+'    static_assert(AMode==0 || AMode==1);\n'+s[end:]
     if family == 'medium':
         s = replace_once(s, '*reinterpret_cast<uint4 const*>(act+g*32+slot*8)', 'act.load8(g*32+slot*8)')
+    for slot in range(4):
+        s = replace_once(s, f'codes<{slot}>', f'codes<{slot},{8 if family=="meta" else 0}>')
     return s
 
 
